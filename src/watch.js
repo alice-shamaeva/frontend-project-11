@@ -1,5 +1,5 @@
 import onChange from 'on-change';
-import { renderError, renderContent, renderForm } from './view';
+import { renderError, renderContent, renderForm } from './render.js';
 
 export default (state) => onChange(state, (path, value) => {
   switch (path) {
