@@ -1,120 +1,87 @@
 import i18next from 'i18next';
-import axios from 'axios';
-import $ from 'jquery';
-import _ from 'lodash';
-import parse from './parse.js';
-import locales from './locale/index.js';
-import { validate } from './utils.js';
-import watch from './watch.js';
-import 'bootstrap/js/dist/modal';
+
+import updateRss from './updateRss.js';
+import ru from './text.js';
+import parser from './parser.js';
+import rssParser from './rssParser.js';
+import validate from './validate.js';
+import {
+  watchForm, watchFeeds, watchPosts,
+} from './render.js';
 
 export default () => {
-  i18next.init({
-    lng: 'en',
-    debug: true,
-    resources: locales,
-  });
-  
-  const proxy = 'https://hexlet-allorigins.herokuapp.com';
-  
-  const getRss = (url) => axios
-    .get(`${proxy}/get?url=${encodeURIComponent(url)}`)
-    .then((res) => res.data)
-    .catch((e) => console.log(e));
-  
-  const updatePosts = (state, links) => {
-    links.reverse().forEach(({ id, link }) => {
-      getRss(link).then((data) => {
-        const { infoItems } = parse(data.contents);
-        const { posts } = state.data;
-        const updatedPosts = infoItems.map(({ title, description, link }) => ({
-          id,
-          title,
-          description,
-          link,
-        }));
-        const newPosts = _.differenceWith(updatedPosts, posts, _.isEqual);
-        if (newPosts.length > 0) {
-          state.data.posts = [...newPosts, state.data.posts];
-        }
-      });
-    });
-    setTimeout(() => updatePosts(state, links), 5000);
-  };
+  i18next.init({ lng: 'ru', debug: true, resources: { ru } });
   
   const state = {
-    submitForm: {
-      state: 'filling',
-      errors: [],
-      validationErrors: [],
-      loadState: '',
+    form: {
+      url: '',
+      urlValid: '',
     },
-    data: {
+    formInfo: {
+      addedUrls: [],
+      status: '',
+    },
+    feedsAndPosts: {
       feeds: [],
       posts: [],
-      links: [],
+      ui: {
+        openedLinks: [],
+      },
     },
   };
   
-  const addBtn = document.querySelector('.addBtn');
-  addBtn.textContent = i18next.t('add');
-  const closeModalBtn = document.querySelector('.closeModalBtn');
-  closeModalBtn.textContent = i18next.t('close');
-  const goModalBtn = document.querySelector('.goModalBtn');
-  goModalBtn.textContent = i18next.t('go');
+  const errorBox = document.querySelector('.feedback');
+  const feedsBox = document.querySelector('.feeds');
+  const postsBox = document.querySelector('.posts');
+  const input = document.querySelector('input');
+  const form = document.querySelector('form');
   
-  const watchedState = watch(state);
-  const form = document.querySelector('.rss-form');
+  const watchedStateForm = watchForm(state, errorBox);
+  const watchedStateFeeds = watchFeeds(state.feedsAndPosts.feeds, feedsBox);
+  const watchedStatePosts = watchPosts(state.feedsAndPosts, postsBox);
   
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    watchedState.submitForm.validationErrors = [];
-    watchedState.submitForm.state = 'processing';
-    const formData = new FormData(e.target);
-    const url = formData.get('value');
-    const URLerrors = validate(url, state.data.links);
-    if (URLerrors.length === 0) {
-      getRss(url)
-        .then((res) => parse(res.contents))
-        .then((data) => {
-          const { feeds, posts, links } = state.data;
-          const { feedInfo, infoItems } = data;
-          const id = _.uniqueId();
-          watchedState.data.feeds = [{ id, ...feedInfo }, ...feeds];
-          const newPosts = infoItems.map(({ title, link, description }) => ({
-            id,
-            title,
-            link,
-            description,
-          }));
-          watchedState.data.posts = [...newPosts, ...posts];
-          watchedState.data.links = [{ id, link: url }, ...links];
-          watchedState.submitForm.state = 'finished';
-        })
-        .then(() => {
-          watchedState.submitForm.state = 'filling';
-        })
-        .catch((err) => {
-          console.log(err);
-          watchedState.submitForm.state = 'failed';
-          watchedState.submitForm.errors = [
-            i18next.t('submitProcess.errors.rssNotValid'),
-          ];
-        })
-        .then(() => updatePosts(watchedState, state.data.links));
-    } else {
-      watchedState.submitForm.state = 'failed';
-      watchedState.submitForm.validationErrors = URLerrors;
+    const url = input.value;
+    state.form.url = url;
+    if (state.formInfo.addedUrls.length === 0) {
+      updateRss(state, watchedStateFeeds, watchedStatePosts, parser, rssParser);
     }
-  });
-  $('#myModal').on('show.bs.modal', function append(evt) {
-    const button = $(evt.relatedTarget);
-    const description = button.data('description');
-    const title = button.data('title');
-    const link = button.data('link');
-    const modal = $(this);
-    modal.find('#description').text(description);
-    modal.find('#title').text(title);
-    modal.find('#link').attr({ href: link });
+    
+    validate(url, state)
+      .then(() => parser(url))
+      .then((response) => {
+        if (!response.data.contents.includes('</rss>')) throw new Error('String is not RSS');
+        state.formInfo.addedUrls.push(url);
+        
+        if (response.status < 300 && response.status >= 200) {
+          const startingNumber = state.feedsAndPosts.posts.length + 1;
+          
+          const { feed, newPosts } = rssParser(response.data.contents, startingNumber);
+          watchedStateFeeds.push(feed);
+          watchedStatePosts.push(...newPosts);
+          state.formInfo.status = i18next.t('successfullyAdded');
+          watchedStateForm.urlValid = true;
+        }
+      })
+      .catch((error) => {
+        state.form.urlValid = '';
+        switch (error.message) {
+          case 'Network Error':
+            state.formInfo.status = 'Ошибка сети';
+            watchedStateForm.urlValid = false;
+            break;
+          case 'String is not RSS':
+            state.formInfo.status = 'Ресурс не содержит валидный RSS';
+            watchedStateForm.urlValid = false;
+            break;
+          default:
+            state.formInfo.status = error.errors;
+            watchedStateForm.urlValid = false;
+        }
+      });
+    
+    input.focus();
+    form.reset();
   });
 };
