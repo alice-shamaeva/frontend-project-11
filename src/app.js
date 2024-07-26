@@ -1,6 +1,6 @@
 import i18next from 'i18next';
 
-import updateRss from './updateRss.js';
+import updateRss from './updateRSS.js';
 import ru from './text.js';
 import parser from './parser.js';
 import rssParser from './rssParser.js';
