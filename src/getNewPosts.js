@@ -24,7 +24,6 @@ const getNewPosts = () => {
 
         Array.from(items)
           .filter((item) => {
-            // если не сработает, попробуй двойной цикл
             const titlePost = item.querySelector('title').textContent;
             return !existedTitlesPosts.includes(titlePost);
           })

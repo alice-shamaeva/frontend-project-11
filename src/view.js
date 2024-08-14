@@ -35,12 +35,10 @@ export const renderReadabilityPosts = (path, value) => {
   if (readability === 'read') {
     a.classList.remove('fw-bold');
     a.classList.add('fw-normal', 'link-secondary');
-    // <a href="http://example.com/test/1710334680" class="fw-normal link-secondary" data-id="2" target="_blank" rel="noopener noreferrer">блабла</a>
   }
 };
 export const renderPosts = (path, value) => {
   if (postsContainer.children.length === 0) {
-    // если такого DOM элемента еще нет, то отрисовываем
     postsContainer.insertAdjacentHTML(
       'afterbegin',
       `<div class="card border-0">
@@ -53,8 +51,7 @@ export const renderPosts = (path, value) => {
   }
 
   const ulPosts = postsContainer.querySelector('.list-group');
-  const { postId, title, link } = value[value.length - 1]; // { feedId: 1, postId: 2, title: 'бла', link: 'https://бла.com' }
-
+  const { postId, title, link } = value[value.length - 1];
   ulPosts.insertAdjacentHTML(
     'beforeend',
     `<li class="list-group-item d-flex justify-content-between align-items-start border-0 border-end-0">
@@ -77,7 +74,6 @@ export const renderPosts = (path, value) => {
 };
 export const renderFeeds = (path, value) => {
   if (feedsContainer.children.length === 0) {
-    // если такого DOM элемента еще нет, то отрисовываем
     feedsContainer.insertAdjacentHTML(
       'afterbegin',
       `<div class="card border-0">
@@ -89,7 +85,7 @@ export const renderFeeds = (path, value) => {
     );
   }
 
-  const { title, description } = value[value.length - 1]; // { id: 1, url: 'https://бла.com', title: 'бла', description: 'бла' }
+  const { title, description } = value[value.length - 1];
 
   const ulFeeds = feedsContainer.querySelector('.list-group');
   ulFeeds.insertAdjacentHTML(
@@ -104,15 +100,14 @@ export const renderFeeds = (path, value) => {
 export const renderErrors = (path, value) => {
   if (path === 'errors.validateErrors' || path === 'errors.networkErrors') {
     if (value !== '') {
-      // если туда попала ошибка
-      inputUrl.classList.add('is-invalid'); // красная рамка вокруг инпута
+      inputUrl.classList.add('is-invalid');
 
       const pExample = document.querySelector('.div_p-example');
       if (pExample.nextElementSibling) {
         pExample.nextElementSibling.remove();
       }
 
-      const pInvalid = document.createElement('p'); // вывод ошибки из watchedState.errors.validateErrors
+      const pInvalid = document.createElement('p');
       pInvalid.classList.add(
         'feedback',
         'm-0',
@@ -120,18 +115,16 @@ export const renderErrors = (path, value) => {
         'small',
         'text-danger',
         'div_p_invalid',
-      ); // <p class="feedback m-0 position-absolute small text-danger">Ссылка должна быть валидным URL</p>
-      pInvalid.textContent = value; // здесь будут и ошибки из yup, и ошибки сети
+      );
+      pInvalid.textContent = value;
       formContainer.append(pInvalid);
     }
-
-    // вот сюда 'Ресурс не содержит валидный RSS'
   }
 
   if (path === 'rssLinks') {
-    inputUrl.value = ''; // очищаем инпут
+    inputUrl.value = '';
     inputUrl.focus();
-    inputUrl.classList.remove('is-invalid'); // убираем красную рамку вокруг инпута
+    inputUrl.classList.remove('is-invalid');
 
     const pExample = document.querySelector('.div_p-example');
     if (pExample.nextElementSibling) {
@@ -146,7 +139,7 @@ export const renderErrors = (path, value) => {
       'small',
       'text-success',
       'div_p_valid',
-    ); // <p class="feedback m-0 position-absolute small text-success">RSS успешно загружен</p>
+    );
     pValid.textContent = i18nInstance.t('validate.successURL');
     formContainer.append(pValid);
   }

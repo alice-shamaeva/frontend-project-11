@@ -1,9 +1,9 @@
 const validate = (url, state) => {
   try {
-    state.validateSync(url, { abortEarly: false }); // если использовать validate, то это асинхронный метод, поэтому возвращает промис
+    state.validateSync(url, { abortEarly: false });
     return '';
   } catch (e) {
-    return e.message; // если форма не валидна, то выводится ошибка, которую можно сохранить в state; например, 'name is a required field at createError'
+    return e.message;
   }
 };
 
