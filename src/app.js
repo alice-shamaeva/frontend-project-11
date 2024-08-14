@@ -37,7 +37,6 @@ const app = () => {
 
     watchedStateErrors.errors.validateErrors = validate(url, schema);
     if (state.errors.validateErrors.length === 0 && !state.rssLinks.includes(url)) {
-
       getRSSFeed(url)
         .then((response) => {
           const doc = dataParse(response.data.contents);

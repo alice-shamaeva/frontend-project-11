@@ -4,4 +4,3 @@ const dataParse = (responseData) => {
 };
 
 export default dataParse;
-

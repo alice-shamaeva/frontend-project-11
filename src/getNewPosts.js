@@ -5,7 +5,6 @@ import { state, watchedStateDataPosts } from './model.js';
 
 const getNewPosts = () => {
   state.rssLinks.forEach((link) => {
-
     let postId;
     state.data.feeds.forEach((feed) => {
       if (feed.url === link) {
