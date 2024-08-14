@@ -28,10 +28,10 @@ const config = {
       {
         test: /\.scss$/,
         use: [
-          "style-loader",
-          "css-loader",
+          'style-loader',
+          'css-loader',
           {
-            loader: "sass-loader",
+            loader: 'sass-loader',
             options: {
               sassOptions: {
                 quietDeps: true,
