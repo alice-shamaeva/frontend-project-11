@@ -1,118 +1,112 @@
-import * as yup from 'yup';
+import { string } from 'yup';
+import axios from 'axios';
+import i18next from 'i18next';
 import _ from 'lodash';
-import {
-  state,
-  watchedStateErrors,
-  watchedStateDataFeeds,
-  watchedStateDataPosts,
-  watchedStateReadabilityPosts,
-  watchedStateModalContent,
-} from './model.js';
-import i18nInstance from './locales/initInstance.js';
-import validate from './validate.js';
-import dataParse from './dataParse.js';
-import getRSSFeed from './getRSSFeed.js';
-import getNewPosts from './getNewPosts.js';
+import makeWatchedState from './view.js';
+import resources from './locales/index.js';
+import parse from './parser.js';
+import buildPath from './getPath.js';
 
-const app = () => {
-  const inputUrl = document.querySelector('.form_input');
-  const form = document.querySelector('.rss-form');
+const makeYupSchema = (urls) => string().url('invalid').notOneOf(urls, 'existing');
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    console.log(e.target);
-    const url = inputUrl.value.trim();
-
-    watchedStateErrors.errors.validateErrors = '';
-
-    const schema = yup
-      .string()
-      .url(i18nInstance.t('validate.invalidURL'))
-      .notOneOf(state.rssLinks, i18nInstance.t('validate.notUniqueURL'));
-
-    if (url.length === 0) {
-      watchedStateErrors.errors.validateErrors = i18nInstance.t('validate.shouldNotBeEmpty');
-      return;
-    }
-
-    watchedStateErrors.errors.validateErrors = validate(url, schema);
-    if (state.errors.validateErrors.length === 0 && !state.rssLinks.includes(url)) {
-      getRSSFeed(url)
-        .then((response) => {
-          const doc = dataParse(response.data.contents);
-
-          if (!doc.querySelector('channel')) {
-            watchedStateErrors.errors.validateErrors = i18nInstance.t(
-              'validate.urlShouldContainRSS',
-            );
-            return;
-          }
-
-          const titleFeed = doc.querySelector('title').textContent;
-          const descriptionFeed = doc.querySelector('description').textContent;
-          const feed = {
-            id: _.uniqueId(),
-            url,
-            title: titleFeed,
-            description: descriptionFeed,
-          };
-          watchedStateDataFeeds.data.feeds.push(feed);
-
-          const items = doc.querySelectorAll('item');
-          items.forEach((item) => {
-            const titlePost = item.querySelector('title').textContent;
-            const descriptionPost = item.querySelector('description').textContent;
-            const linkPost = item.querySelector('link').textContent;
-            const post = {
-              feedId: feed.id,
-              postId: _.uniqueId(),
-              title: titlePost,
-              description: descriptionPost,
-              link: linkPost,
-            };
-            watchedStateDataPosts.data.posts.push(post);
-          });
-        })
-        .catch((error) => {
-          watchedStateErrors.errors.networkErrors = i18nInstance.t('validate.networkError');
-          console.log(`Вывожу ошибку сети: ${error}`);
-        });
-
-      watchedStateErrors.rssLinks.push(url);
-    }
-  });
-
-  const modal = document.querySelector('#modal');
-
-  modal.addEventListener('show.bs.modal', (event) => {
-    const button = event.relatedTarget;
-    const idButton = button.getAttribute('data-id');
-
-    let postDescription;
-    state.data.posts.forEach((post) => {
-      if (post.postId === idButton) {
-        postDescription = post.description;
-      }
-    });
-
-    const li = button.parentNode;
-    const a = li.querySelector('a');
-    const postTitle = a.textContent;
-    const postLink = a.getAttribute('href');
-
-    watchedStateReadabilityPosts.uiState.readabilityPosts.push({
-      postId: idButton,
-      readability: 'read',
-    });
-    watchedStateModalContent.uiState.modalContent.push({
-      postId: idButton,
-      modalTitle: postTitle,
-      modalBody: postDescription,
-      postLink,
-    });
-  });
-
-  getNewPosts();
+const updateFeed = (state) => {
+  const cb = () => {
+    Promise.all(state.watchedUrls.map((url) => axios.get(buildPath(url))))
+      .then((responseArr) => {
+        const postsAll = responseArr.reduce((acc, item) => {
+          const { posts } = parse(item.data.contents);
+          return [...acc, ...posts];
+        }, []);
+        const newPosts = _
+          .differenceBy(postsAll, Array.from(state.posts), 'text')
+          .map((post) => ({ ...post, id: _.uniqueId() }));
+        if (newPosts.length !== 0) { state.posts = [...newPosts, ...state.posts]; }
+      })
+      .catch((e) => console.log(e))
+      .finally(() => setTimeout(cb, 5000));
+  };
+  setTimeout(cb, 5000);
 };
 
-export default app;
+const openModalHandler = (id, state) => () => {
+  state.activePostId = id;
+  if (!state.viewedIds.includes(id)) {
+    state.viewedIds = [...state.viewedIds, id];
+  }
+};
+
+const closeModalHandler = (state) => () => {
+  state.activePostId = null;
+};
+
+export default () => {
+  const defaultLanguage = 'ru';
+  const state = {
+    lng: defaultLanguage,
+    status: null,
+    activePostId: null,
+    watchedUrls: [],
+    feeds: [],
+    posts: [],
+    viewedIds: [],
+  };
+
+  const elements = {
+    feedbackEl: document.querySelector('.feedback'),
+    inputEl: document.getElementById('url-input'),
+    submitBtn: document.getElementById('submit'),
+    feedsContainer: document.querySelector('.feeds'),
+    postsContainer: document.querySelector('.posts'),
+    modalContainer: document.getElementById('modal'),
+    modalTitleEl: document.querySelector('.modal-title'),
+    modalBodyEl: document.querySelector('.modal-body'),
+    modalLinkEl: document.querySelector('.full-article'),
+  };
+
+  const i18Instance = i18next.createInstance();
+  i18Instance.init({
+    lng: state.lng,
+    debug: false,
+    resources,
+  })
+    .then(() => {
+      const form = document.querySelector('form');
+      const watchedState = makeWatchedState(
+        state,
+        i18Instance,
+        openModalHandler,
+        closeModalHandler,
+        elements,
+      );
+      updateFeed(watchedState, watchedState.urls);
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        watchedState.status = 'sending';
+        const formData = new FormData(e.target);
+        const trimmedUrl = formData.get('url').trim();
+        makeYupSchema(watchedState.watchedUrls)
+          .validate(trimmedUrl, { abortEarly: true })
+          .then((url) => axios.get(buildPath(url)))
+          .then((response) => {
+            const parsedData = parse(response.data.contents);
+            const { title, description, posts } = parsedData;
+            const postsWithIds = posts.map((post) => ({
+              id: _.uniqueId(),
+              ...post,
+            }));
+            watchedState.feeds = [...watchedState.feeds, { title, description }];
+            watchedState.posts = [...postsWithIds, ...watchedState.posts];
+            watchedState.watchedUrls = [...watchedState.watchedUrls, trimmedUrl];
+            watchedState.status = 'successful';
+          })
+          .catch((err) => {
+            if (err.name === 'AxiosError') {
+              watchedState.status = 'networkError';
+            } else {
+              const [error] = err.errors;
+              watchedState.status = error;
+            }
+          });
+      });
+    });
+};

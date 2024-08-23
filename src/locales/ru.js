@@ -3,14 +3,19 @@ export default {
     languages: {
       ru: 'Русский',
     },
-    validate: {
-      invalidURL: 'Ссылка должна быть валидным URL',
-      notUniqueURL: 'RSS уже существует',
-      successURL: 'RSS успешно загружен',
-      urlShouldContainRSS: 'Ресурс не содержит валидный RSS',
-      shouldNotBeEmpty: 'Не должно быть пустым',
-      openPostPreview: 'Просмотр',
-      networkError: 'Ошибка сети',
+    texts: {
+      statusMessage: {
+        successful: 'RSS успешно загружен',
+        invalid: 'Ссылка должна быть валидным URL',
+        existing: 'RSS уже существует',
+        noValidRss: 'Ресурс не содержит валидный RSS',
+        networkError: 'Ошибка сети',
+      },
+      rssFeed: {
+        posts: 'Посты',
+        feeds: 'Фиды',
+        watch: 'Просмотр',
+      },
     },
   },
 };
