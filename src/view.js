@@ -53,7 +53,7 @@ const renderPosts = (posts, i18, handler, state, elements) => {
         <h2 class="card-title h4">${i18.t('texts.rssFeed.posts')}</h2>
       </div>
     <ul class="list-group border-0 rounded-0">
-      ${posts.map(({text, link, id}) => `
+      ${posts.map(({ text, link, id }) => `
         <li class="list-group-item d-flex justify-content-between align-items-start border-0 border-end-0">
           <a href="${link}" class="${state.viewedIds.includes(id) ? 'fw-normal link-secondary' : 'fw-bold'}" data-id="${id}" target="_blank" rel="noopener noreferrer">${text}</a>
           <button type="button" class="btn btn-outline-primary btn-sm" data-id="${id}" data-bs-toggle="modal" data-bs-target="#modal">${i18.t('texts.rssFeed.watch')}</button>
@@ -68,8 +68,6 @@ const renderPosts = (posts, i18, handler, state, elements) => {
       btn.addEventListener('click', handler(id, state));
     });
 };
-
-
 
 const renderModal = (state, elements, closeModalHandler) => {
   const { text, link, content } = state.posts.find((i) => i.id === state.activePostId);

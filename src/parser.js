@@ -28,4 +28,3 @@ export default (data) => {
     throw new ParseError();
   }
 };
-
